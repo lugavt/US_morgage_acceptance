@@ -1,0 +1,6 @@
+pandas
+polars
+pyarrow
+scikit-learn
+jupyter
+ydata-profiling

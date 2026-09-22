@@ -3,6 +3,9 @@
 *.csv
 *.csv.zip
 
+# Generated reports (regenerate via the notebook; can be large)
+/reports/
+
 # Python
 __pycache__/
 *.pyc
