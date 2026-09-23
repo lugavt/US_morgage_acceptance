@@ -3,15 +3,18 @@
 *.csv
 *.csv.zip
 
-# Generated reports (regenerate via the notebook; can be large)
+# Generated reports & temporary artifacts
 /reports/
+*.pkl
+temp_workspace.pkl
 
-# Python
+# Python & Virtual Environments
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .venv/
 venv/
+ml_env/
 
 # OS
 .DS_Store
