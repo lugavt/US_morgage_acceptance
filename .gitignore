@@ -1,0 +1,18 @@
+# Data (too large for git; see README for how to fetch)
+/data/
+*.csv
+*.csv.zip
+
+# Generated reports (regenerate via the notebook; can be large)
+/reports/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
