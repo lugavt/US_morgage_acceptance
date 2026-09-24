@@ -5,3 +5,10 @@ scikit-learn
 jupyter
 ydata-profiling
 matplotlib
+xgboost
+shap
+scipy
+statsmodels
+fairlearn
+tabpfn
+XPER
