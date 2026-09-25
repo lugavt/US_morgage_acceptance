@@ -5,3 +5,5 @@ scikit-learn
 jupyter
 ydata-profiling
 matplotlib
+xgboost
+optuna
