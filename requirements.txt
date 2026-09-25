@@ -13,3 +13,4 @@ fairlearn
 tabpfn
 XPER
 optuna
+lime

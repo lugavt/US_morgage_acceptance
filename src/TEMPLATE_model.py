@@ -3,8 +3,8 @@ Template for a model owner's module.
 
 Copy this file to `<name>_model.py` in this same folder, where <name> is one of
 common_metrics.MODEL_NAMES ("xgboost", "logreg", "tabpfn") — e.g. `xgboost_model.py`.
-As soon as it's here, every notebook under notebooks/ (interpretability, stability,
-fairness) picks it up automatically. No other code changes needed.
+As soon as it's here, every notebook under notebooks/evaluation/ (interpretability,
+stability, fairness) picks it up automatically. No other code changes needed.
 
 Both functions receive/return plain pandas DataFrames built from exactly
 common_metrics.FEATURES — do your own feature engineering (encoding, scaling,

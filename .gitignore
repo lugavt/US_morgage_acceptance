@@ -10,12 +10,8 @@ data/
 *.pickle
 *.joblib
 
-# Model artifacts / large outputs — but keep the model owners' source code
-# (fit()/predict_proba() modules for the ISF metrics framework). Note: `models/*`
-# not `models/` — negating a file pattern doesn't work once the directory itself
-# is excluded, git won't even look inside it.
-models/*
-!models/*.py
+# Model artifacts / large outputs — model source code lives in src/, not here
+models/
 outputs/
 artifacts/
 *.model

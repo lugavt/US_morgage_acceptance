@@ -2,13 +2,14 @@
 Shared scaffolding for the interpretability, stability, and fairness evaluation
 notebooks under notebooks/evaluation/.
 
-Every model owner drops a `<name>_model.py` file into `models/` (copy
-`models/TEMPLATE_model.py`, matching one of MODEL_NAMES below) exposing `fit()` and
+Every model owner drops a `<name>_model.py` file into `src/` (copy
+`src/TEMPLATE_model.py`, matching one of MODEL_NAMES below) exposing `fit()` and
 `predict_proba()`. Once that file exists, `load_model_module()` picks it up
 automatically and every notebook here lights up for that model with no other code
 changes needed.
 """
 
+import sys
 from pathlib import Path
 import importlib.util
 
@@ -17,7 +18,13 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent
 DATA_DIR = REPO_ROOT / "data" / "processed"
-MODELS_DIR = REPO_ROOT / "models"
+SRC_DIR = REPO_ROOT / "src"
+ARTIFACTS_DIR = REPO_ROOT / "models"
+
+# joblib.load() on a saved model unpickles a reference to its own module (e.g.
+# `xgboost_model.XGBScorer`) — this makes that resolvable via a plain import.
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 # --- Locked feature / protected-set decision ---
 
@@ -35,7 +42,6 @@ FEATURES = [
     "derived_loan_product_type",
     "has_co_applicant",
     "income",
-    "initially_payable_to_institution",
     "interest_only_payment",
     "intro_rate_period",
     "lei",
@@ -83,8 +89,9 @@ AUDIT_COLS = ["derived_race", "derived_ethnicity", "derived_sex", "applicant_age
 
 MODEL_NAMES = ["xgboost", "logreg", "tabpfn"]
 
-# TODO(team): set once Task 1 (XGBoost owner) finalizes the cost matrix / threshold.
-TEAM_THRESHOLD = 0.5
+# From models/xgboost_results.json (margin=0.03, lgd=0.35). TODO(team): confirm
+# logreg/tabpfn should use this same threshold rather than their own.
+TEAM_THRESHOLD = 0.9210526315789473
 
 
 def team_pnl_fn(y_true, y_pred, profit: float = 1.0, loss: float = 5.0) -> float:
@@ -120,13 +127,13 @@ def get_audit(df: pd.DataFrame) -> pd.DataFrame:
 
 def load_model_module(name: str):
     """
-    Returns the models.<name>_model module if the model owner has dropped it in,
+    Returns the src/<name>_model module if the model owner has dropped it in,
     else None. Notebooks check for None and skip that model gracefully — that stays
     true right up until each model is actually ready.
     """
     if name not in MODEL_NAMES:
         raise ValueError(f"Unknown model name {name!r}, expected one of {MODEL_NAMES}")
-    module_path = MODELS_DIR / f"{name}_model.py"
+    module_path = SRC_DIR / f"{name}_model.py"
     if not module_path.exists():
         return None
     spec = importlib.util.spec_from_file_location(f"{name}_model", module_path)
@@ -145,6 +152,29 @@ def report_status() -> None:
     waiting = [n for n in MODEL_NAMES if n not in ready]
     print(f"Ready:   {ready or '(none yet)'}")
     print(f"Waiting: {waiting or '(none — all models in)'}")
+
+
+def get_or_fit_model(name: str, module, X_train, y_train):
+    """
+    Loads models/<name>_model.joblib if a model owner has saved one (the real,
+    already-tuned model), refitting from scratch only as a fallback when no saved
+    artifact exists, or when the saved one doesn't actually work against the
+    current code (e.g. it was trained on a feature set that's since changed).
+    Retraining a multi-thousand-tree model on the full training set just to
+    explain it is pure waste when the real one is on disk — only the stability
+    notebook has a genuine reason to call fit() repeatedly, since resampling and
+    refitting IS the measurement there.
+    """
+    artifact_path = ARTIFACTS_DIR / f"{name}_model.joblib"
+    if artifact_path.exists():
+        import joblib
+        model = joblib.load(artifact_path)
+        try:
+            module.predict_proba(model, X_train.iloc[:2])
+            return model
+        except Exception as e:
+            print(f"  {artifact_path.name} exists but doesn't match the current code ({e}) — refitting instead")
+    return module.fit(X_train, y_train)
 
 
 def manual_permutation_importance(model, module, X, y, n_repeats: int = 10, random_state: int = 42) -> dict:
@@ -176,11 +206,14 @@ def importance_vector(model_type: str, model, module, X_ref, y_ref) -> np.ndarra
     xgboost/logreg/tabpfn.
     """
     if model_type == "xgboost":
-        try:
-            gain = model.get_booster().get_score(importance_type="gain")
-            return np.array([gain.get(f, 0.0) for f in FEATURES])
-        except AttributeError:
-            pass  # fall through to the generic path if fit() didn't return a raw booster-capable object
+        for candidate in (model, getattr(model, "booster", None)):
+            if candidate is None:
+                continue
+            try:
+                gain = candidate.get_booster().get_score(importance_type="gain")
+                return np.array([gain.get(f, 0.0) for f in FEATURES])
+            except AttributeError:
+                continue
     if model_type == "logreg":
         try:
             return np.asarray(model.coef_[0])
