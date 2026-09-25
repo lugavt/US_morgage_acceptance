@@ -10,6 +10,10 @@ data/
 *.pickle
 *.joblib
 
+# Generated reports & temporary artifacts
+/reports/
+temp_workspace.pkl
+
 # Model artifacts / large outputs — model source code lives in src/, not here
 models/
 outputs/
@@ -17,13 +21,7 @@ artifacts/
 *.model
 *.onnx
 
-# macOS
-.DS_Store
-._*
-.Spotlight-V100
-.Trashes
-
-# Python
+# Python & Virtual environments
 __pycache__/
 *.py[cod]
 *$py.class
@@ -34,13 +32,13 @@ dist/
 *.egg-info/
 .eggs/
 
-# Virtual environments
 .venv/
 .venv */
 venv/
 env/
 ENV/
 .conda/
+ml_env/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -60,9 +58,15 @@ ipython_config.py
 .env.*
 !.env.example
 
-# Editors
+# Editors & OS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
 .vscode/
 .idea/
+*.swp
 *.swp
 
 # Local Claude Code project instructions
