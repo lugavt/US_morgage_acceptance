@@ -27,7 +27,7 @@ import pandas as pd
 os.environ.setdefault("TABPFN_ALLOW_CPU_LARGE_DATASET", "1")
 
 RANDOM_STATE = 42
-MODEL_VERSION = "v3.5"   # "v2.5" on an Intel Mac, where tabpfn 9 / PyTorch >= 2.5 don't install
+MODEL_VERSION = "v3.5"   # TabPFN-3.5, the latest release (tabpfn 9.0.0)
 CONTEXT_ROWS = 10_000    # training rows the model conditions on
 N_ESTIMATORS = 4         # same validation AUC as 8 in the speed check, at half the scoring cost
 BATCH_ROWS = 20_000      # rows per predict call; scores depend slightly on the batch, see notebook
@@ -143,9 +143,8 @@ def make_classifier(n_estimators: int = N_ESTIMATORS, model_version: str = MODEL
     from tabpfn.constants import ModelVersion
 
     if model_version not in {v.value for v in ModelVersion}:
-        raise RuntimeError(f"tabpfn {tabpfn.__version__} has no model {model_version!r}. TabPFN-3.5 "
-                           "needs tabpfn==9.0.0 (Linux, Colab, Apple-silicon Macs); on an Intel Mac "
-                           "use model_version='v2.5'.")
+        raise RuntimeError(f"tabpfn {tabpfn.__version__} has no model {model_version!r}; "
+                           "TabPFN-3.5 needs tabpfn==9.0.0.")
     return TabPFNClassifier.create_default_for_version(
         ModelVersion(model_version), n_estimators=n_estimators,
         categorical_features_indices=[FEATURES.index(c) for c in CATEGORICAL_FEATURES],
