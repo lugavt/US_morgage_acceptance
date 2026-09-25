@@ -63,3 +63,5 @@ ipython_config.py
 .vscode/
 .idea/
 *.swp
+
+CLAUDE.md
