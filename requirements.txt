@@ -12,3 +12,4 @@ statsmodels
 fairlearn
 tabpfn
 XPER
+optuna
