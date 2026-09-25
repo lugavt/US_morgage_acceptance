@@ -89,8 +89,10 @@ AUDIT_COLS = ["derived_race", "derived_ethnicity", "derived_sex", "applicant_age
 
 MODEL_NAMES = ["xgboost", "logreg", "tabpfn"]
 
-# From models/xgboost_results.json (margin=0.03, lgd=0.35). TODO(team): confirm
-# logreg/tabpfn should use this same threshold rather than their own.
+# p > LGD / (MARGIN + LGD) with MARGIN=3%, LGD=35% (see notebooks/xgboost_model.ipynb §7) —
+# the loan amount cancels out of the per-loan P&L comparison, so this same probability cutoff
+# is intended to apply to every model and every applicant, not just XGBoost's own tuning.
+# TODO(team): MARGIN/LGD themselves still need final team sign-off.
 TEAM_THRESHOLD = 0.9210526315789473
 
 
@@ -145,6 +147,45 @@ def load_model_module(name: str):
 def available_models() -> dict:
     """{name: module} for every model owner who has dropped their file in so far."""
     return {name: mod for name in MODEL_NAMES if (mod := load_model_module(name)) is not None}
+
+
+# Each model owner's own training notebook already scores the test set once and exports
+# it here — reusing that means fairness.ipynb never needs to load or run a model for these.
+PRECOMPUTED_PREDICTIONS = {
+    "logreg": REPO_ROOT / "data" / "log-reg-results" / "test_predictions_with_sensitive.parquet",
+    "tabpfn": REPO_ROOT / "data" / "tabpfn-results" / "test_predictions_with_sensitive.parquet",
+}
+
+
+def get_precomputed_predictions(name: str):
+    """
+    Returns the model owner's own exported test-set predictions (index = original position
+    in test.parquet), or None if none exists yet for this model (xgboost has none, so
+    fairness.ipynb falls back to live predict_proba for it). Only y_true/y_pred_proba and the
+    protected columns come from the file — y_pred is intentionally NOT read from it: the
+    export was thresholded at 0.5, not TEAM_THRESHOLD, so callers must rebuild y_pred
+    themselves to stay consistent with any model that does need live inference.
+    """
+    path = PRECOMPUTED_PREDICTIONS.get(name)
+    if path is None or not path.exists():
+        return None
+    df = pd.read_parquet(path)
+    return df.rename(columns={"true_target": "y_true", "predicted_probability": "y_pred_proba"}).drop(columns=["predicted_label"])
+
+
+def run_step(results: dict, key: str, fn, *args, **kwargs) -> bool:
+    """
+    Runs fn(*args, **kwargs) and stores it at results[key] if it succeeds; prints a short
+    message and leaves results[key] unset if it raises. Every metric in every notebook goes
+    through this, so one metric failing (a missing token, a slow timeout, a data quirk) never
+    takes any other metric down with it, for that model or any other.
+    """
+    try:
+        results[key] = fn(*args, **kwargs)
+        return True
+    except Exception as e:
+        print(f"    {key} failed ({type(e).__name__}: {e}) — skipping")
+        return False
 
 
 def report_status() -> None:
@@ -219,6 +260,26 @@ def importance_vector(model_type: str, model, module, X_ref, y_ref) -> np.ndarra
             return np.asarray(model.coef_[0])
         except AttributeError:
             pass  # fall through if fit() didn't return a raw sklearn estimator
+        try:
+            # a wrapper (e.g. LogRegScorer) around a ColumnTransformer + LogisticRegression
+            # pipeline — sum |coef| across each column's one-hot-expanded coefficients to get
+            # one number per original feature, using the transformer's own structure rather
+            # than parsing encoded feature-name strings (fragile with underscored column names)
+            pipeline = model.pipeline
+            coefs = pipeline.named_steps["classifier"].coef_[0]
+            preprocessor = pipeline.named_steps["preprocessor"]
+            agg, idx = {}, 0
+            for name, trans, cols in preprocessor.transformers_:
+                if name == "cat":
+                    sizes = [len(c) for c in trans.named_steps["onehot"].categories_]
+                else:
+                    sizes = [1] * len(cols)
+                for col, size in zip(cols, sizes):
+                    agg[col] = float(np.sum(np.abs(coefs[idx:idx + size])))
+                    idx += size
+            return np.array([agg.get(f, 0.0) for f in FEATURES])
+        except (AttributeError, KeyError):
+            pass
     # tabpfn, and the fallback for xgboost/logreg if the native attribute isn't there
     perm = manual_permutation_importance(model, module, X_ref, y_ref, n_repeats=5)
     return np.array([perm[f] for f in FEATURES])
