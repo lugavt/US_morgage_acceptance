@@ -207,17 +207,29 @@ def get_or_fit_model(name: str, module, X_train, y_train):
     explain it is pure waste when the real one is on disk — only the stability
     notebook has a genuine reason to call fit() repeatedly, since resampling and
     refitting IS the measurement there.
+
+    A fallback refit gets written back to artifact_path, so whichever notebook
+    hits the stale/missing case first pays for it once and every later call —
+    same notebook, another notebook, a different run entirely — loads the fresh
+    one instead of refitting again. Only call this with the FULL X_train/y_train:
+    passing a subsample would get cached as if it were the real model.
     """
+    import joblib
+
     artifact_path = ARTIFACTS_DIR / f"{name}_model.joblib"
     if artifact_path.exists():
-        import joblib
         model = joblib.load(artifact_path)
         try:
             module.predict_proba(model, X_train.iloc[:2])
             return model
         except Exception as e:
             print(f"  {artifact_path.name} exists but doesn't match the current code ({e}) — refitting instead")
-    return module.fit(X_train, y_train)
+
+    model = module.fit(X_train, y_train)
+    ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, artifact_path)
+    print(f"  saved freshly-fit model to {artifact_path.name} — later calls will load it instead of refitting")
+    return model
 
 
 def manual_permutation_importance(model, module, X, y, n_repeats: int = 10, random_state: int = 42) -> dict:
