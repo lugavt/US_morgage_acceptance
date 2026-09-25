@@ -87,6 +87,8 @@ PROTECTED_COLS = [
 # variables to audit against directly.
 AUDIT_COLS = ["derived_race", "derived_ethnicity", "derived_sex", "applicant_age", "co_applicant_age"]
 
+assert not (set(FEATURES) & set(PROTECTED_COLS)), "a protected column ended up in FEATURES"
+
 MODEL_NAMES = ["xgboost", "logreg", "tabpfn"]
 
 # p > LGD / (MARGIN + LGD) with MARGIN=3%, LGD=35% (see notebooks/xgboost_model.ipynb §7) —
