@@ -14,11 +14,10 @@ XPER
 optuna
 lime
 # TabPFN, pinned so every machine of the same kind runs the same model.
-# Linux / Colab / Apple-silicon Macs: 9.0.0 was never actually published on PyPI (max release
-# is 8.0.7) — pinned to the latest available instead. If TabPFN-3.5's model_version="v3.5"
-# param (see src/tabpfn_model.py) isn't supported by 8.0.7, that'll surface as a runtime error
-# in fit()/predict_proba(), not an install error.
-tabpfn==8.0.7; sys_platform != "darwin" or platform_machine != "x86_64"
+# Linux / Colab / Apple-silicon Macs: tabpfn 9.0.0 -> TabPFN-3.5 (needs a TABPFN_TOKEN, see
+# ~/.tabpfn/token). It briefly wasn't published on PyPI (max release was 8.0.7 at the time,
+# which doesn't support model_version="v3.5" — see src/tabpfn_model.py) but is now.
+tabpfn==9.0.0; sys_platform != "darwin" or platform_machine != "x86_64"
 # Intel Macs: PyTorch stops at 2.2.2 there, so the newest usable release is 6.4.1 -> TabPFN-2.5 (no token),
 # and torch 2.2.2 is compiled against NumPy 1.x.
 tabpfn==6.4.1; sys_platform == "darwin" and platform_machine == "x86_64"

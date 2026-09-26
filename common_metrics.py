@@ -10,6 +10,8 @@ changes needed.
 """
 
 import sys
+import pickle
+from datetime import datetime
 from pathlib import Path
 import importlib.util
 
@@ -185,19 +187,37 @@ def get_precomputed_predictions(name: str):
     return df.rename(columns={"true_target": "y_true", "predicted_probability": "y_pred_proba"}).drop(columns=["predicted_label"])
 
 
-def run_step(results: dict, key: str, fn, *args, **kwargs) -> bool:
+def run_step(results: dict, key: str, fn, *args, checkpoint_dir: Path | None = None, force: bool = False, **kwargs) -> bool:
     """
     Runs fn(*args, **kwargs) and stores it at results[key] if it succeeds; prints a short
     message and leaves results[key] unset if it raises. Every metric in every notebook goes
     through this, so one metric failing (a missing token, a slow timeout, a data quirk) never
     takes any other metric down with it, for that model or any other.
+
+    If checkpoint_dir is given, the result is written to
+    checkpoint_dir/{key}_{timestamp}.pkl the moment it's computed — a kernel interrupt
+    mid-run (e.g. XPER taking hours) doesn't lose metrics that already finished. The next
+    call for the same key loads the most recent matching file instead of recomputing, unless
+    force=True (recompute regardless, still writing a new timestamped checkpoint).
     """
+    if checkpoint_dir is not None and not force:
+        existing = sorted(checkpoint_dir.glob(f"{key}_*.pkl"))
+        if existing:
+            with open(existing[-1], "rb") as f:
+                results[key] = pickle.load(f)
+            print(f"    {key}: loaded from checkpoint ({existing[-1].name})")
+            return True
     try:
         results[key] = fn(*args, **kwargs)
-        return True
     except Exception as e:
         print(f"    {key} failed ({type(e).__name__}: {e}) — skipping")
         return False
+    if checkpoint_dir is not None:
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        with open(checkpoint_dir / f"{key}_{timestamp}.pkl", "wb") as f:
+            pickle.dump(results[key], f)
+    return True
 
 
 def report_status() -> None:
@@ -262,6 +282,24 @@ def manual_permutation_importance(model, module, X, y, n_repeats: int = 10, rand
             drops.append(baseline_auc - shuffled_auc)
         importances[col] = float(np.mean(drops))
     return importances
+
+
+def importance_rank_distance(v1: np.ndarray, v2: np.ndarray) -> float:
+    """
+    Rank-based counterpart to a raw ||v1 - v2||_2 distance over an importance_vector output.
+    XGBoost's gain, logreg's coefficients, and permutation importance are not on the same
+    numeric scale, so a raw distance's magnitude isn't comparable across model types even
+    though the formula is identical — converting each vector to feature rankings (1 = most
+    important) first removes that unit mismatch, since ranks are always 1..len(FEATURES)
+    regardless of the underlying method. abs() before ranking, matching how
+    importance_vector's own logreg branch already treats a large negative coefficient as
+    important, not unimportant.
+    """
+    from scipy.stats import rankdata
+
+    r1 = rankdata(-np.abs(v1))
+    r2 = rankdata(-np.abs(v2))
+    return float(np.linalg.norm(r1 - r2))
 
 
 def logreg_raw_coef(model) -> np.ndarray:
