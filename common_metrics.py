@@ -154,6 +154,9 @@ def load_model_module(name: str):
         return None
     spec = importlib.util.spec_from_file_location(f"{name}_model", module_path)
     module = importlib.util.module_from_spec(spec)
+    # registered so joblib.dump can pickle its classes (e.g. LogRegScorer) — otherwise pickle
+    # re-imports the module, gets a different class object, and raises PicklingError
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
