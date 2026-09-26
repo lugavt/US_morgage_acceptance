@@ -16,7 +16,6 @@ temp_workspace.pkl
 
 # Model artifacts / large outputs — model source code lives in src/, not here
 models/
-outputs/
 artifacts/
 *.model
 *.onnx
