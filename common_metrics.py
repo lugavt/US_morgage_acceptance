@@ -20,6 +20,8 @@ REPO_ROOT = Path(__file__).resolve().parent
 DATA_DIR = REPO_ROOT / "data" / "processed"
 SRC_DIR = REPO_ROOT / "src"
 ARTIFACTS_DIR = REPO_ROOT / "models"
+OUTPUT_DIR = REPO_ROOT / "outputs" / "evaluation"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # joblib.load() on a saved model unpickles a reference to its own module (e.g.
 # `xgboost_model.XGBScorer`) — this makes that resolvable via a plain import.
@@ -90,6 +92,14 @@ AUDIT_COLS = ["derived_race", "derived_ethnicity", "derived_sex", "applicant_age
 assert not (set(FEATURES) & set(PROTECTED_COLS)), "a protected column ended up in FEATURES"
 
 MODEL_NAMES = ["xgboost", "logreg", "tabpfn"]
+
+# Row cap for any interpretability/stability metric that scales with row count (AUC, XPER,
+# permutation importance, the surrogate, PDP/ICE, bootstrap refits, D1->D2). TabPFN's per-row
+# inference cost is categorically higher than xgboost/logreg's, hence the smaller number —
+# both are well above the few-thousand-row floor needed for a stable AUC/importance estimate.
+# Deliberately NOT used in fairness.ipynb: a rare protected subgroup could get too thin in a
+# random subsample for the chi-square/TOST tests to stay meaningful.
+EVAL_SAMPLE_SIZE = {"xgboost": 20_000, "logreg": 20_000, "tabpfn": 5_000}
 
 # p > LGD / (MARGIN + LGD) with MARGIN=3%, LGD=35% (see notebooks/xgboost_model.ipynb §7) —
 # the loan amount cancels out of the per-loan P&L comparison, so this same probability cutoff
@@ -254,6 +264,20 @@ def manual_permutation_importance(model, module, X, y, n_repeats: int = 10, rand
     return importances
 
 
+def logreg_raw_coef(model) -> np.ndarray:
+    """
+    The raw coefficient array from either a bare sklearn LogisticRegression (model.coef_)
+    or a LogRegScorer wrapping a ColumnTransformer + LogisticRegression pipeline — one entry
+    per one-hot-expanded encoded column in the pipeline case, not per original feature.
+    Shared by importance_vector and stability.ipynb's parameter_distance_bootstrap, so this
+    bare-vs-wrapped fallback only needs to be right in one place.
+    """
+    try:
+        return np.asarray(model.coef_[0])
+    except AttributeError:
+        return np.asarray(model.pipeline.named_steps["classifier"].coef_[0])
+
+
 def importance_vector(model_type: str, model, module, X_ref, y_ref) -> np.ndarray:
     """
     A feature-importance vector over FEATURES, ordered consistently, regardless of
@@ -270,18 +294,15 @@ def importance_vector(model_type: str, model, module, X_ref, y_ref) -> np.ndarra
             except AttributeError:
                 continue
     if model_type == "logreg":
-        try:
-            return np.asarray(model.coef_[0])
-        except AttributeError:
-            pass  # fall through if fit() didn't return a raw sklearn estimator
+        if not hasattr(model, "pipeline"):
+            return logreg_raw_coef(model)  # bare estimator: already one coef per original feature
         try:
             # a wrapper (e.g. LogRegScorer) around a ColumnTransformer + LogisticRegression
             # pipeline — sum |coef| across each column's one-hot-expanded coefficients to get
             # one number per original feature, using the transformer's own structure rather
             # than parsing encoded feature-name strings (fragile with underscored column names)
-            pipeline = model.pipeline
-            coefs = pipeline.named_steps["classifier"].coef_[0]
-            preprocessor = pipeline.named_steps["preprocessor"]
+            coefs = logreg_raw_coef(model)
+            preprocessor = model.pipeline.named_steps["preprocessor"]
             agg, idx = {}, 0
             for name, trans, cols in preprocessor.transformers_:
                 if name == "cat":
@@ -297,3 +318,27 @@ def importance_vector(model_type: str, model, module, X_ref, y_ref) -> np.ndarra
     # tabpfn, and the fallback for xgboost/logreg if the native attribute isn't there
     perm = manual_permutation_importance(model, module, X_ref, y_ref, n_repeats=5)
     return np.array([perm[f] for f in FEATURES])
+
+
+class SmokeTestModule:
+    """
+    A throwaway logistic-regression stand-in exposing the same fit()/predict_proba() contract
+    as a real src/<name>_model.py, used by each evaluation notebook's smoke-test cell to check
+    the harness works end to end before any real model is in. Shared here instead of
+    copy-pasted into all three notebooks, so a fix to it only needs to happen once.
+    """
+
+    _medians = None  # fixed at fit time so a later all-NaN batch (e.g. a masked coalition) still fills
+
+    @staticmethod
+    def fit(X, y):
+        from sklearn.linear_model import LogisticRegression
+
+        Xn = X.select_dtypes("number")
+        SmokeTestModule._medians = Xn.median().fillna(0)
+        return LogisticRegression(max_iter=200).fit(Xn.fillna(SmokeTestModule._medians), y)
+
+    @staticmethod
+    def predict_proba(model, X):
+        Xn = X.select_dtypes("number").fillna(SmokeTestModule._medians)
+        return model.predict_proba(Xn)
