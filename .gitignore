@@ -14,9 +14,7 @@ data/
 /reports/
 temp_workspace.pkl
 
-# Model artifacts / large outputs
-models/
-outputs/
+# Model artifacts / large outputs — model source code lives in src/, not here
 artifacts/
 *.model
 *.onnx
@@ -33,6 +31,7 @@ dist/
 .eggs/
 
 .venv/
+.venv */
 venv/
 env/
 ENV/
@@ -68,4 +67,5 @@ Thumbs.db
 *.swp
 *.swp
 
+# Local Claude Code project instructions
 CLAUDE.md

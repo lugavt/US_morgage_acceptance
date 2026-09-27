@@ -1,0 +1,17 @@
+{
+  "model": "XGBoost",
+  "roc_auc": 0.9027570057798435,
+  "pr_auc_approval": 0.9602505755170334,
+  "pr_auc_denial": 0.8246343154560565,
+  "brier": 0.08142774094575164,
+  "threshold": 0.5,
+  "accuracy": 0.8959682567973668,
+  "precision": 0.897500056219328,
+  "recall": 0.9774780375777374,
+  "specificity": 0.6144795055302538,
+  "f1": 0.9357832996358507,
+  "approval_rate_test": 0.8445564819508746,
+  "calibration": "isotonic",
+  "scale_pos_weight": 1.0,
+  "n_estimators": 2862
+}
