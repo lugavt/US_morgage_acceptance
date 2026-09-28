@@ -1,0 +1,22 @@
+# ApexLend · Credit Model Review: theme matching the slide deck
+# (off-white background, navy text, burgundy accent) with a modern sans-serif font, Inter.
+[theme]
+base = "light"
+primaryColor = "#943340"
+backgroundColor = "#FAFAF7"
+secondaryBackgroundColor = "#F1F0EC"
+textColor = "#1B2433"
+linkColor = "#943340"
+borderColor = "#D9D6CF"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+metricValueFontSize = "1.6rem"
+baseRadius = "0.3rem"
+showSidebarBorder = true
+
+[theme.sidebar]
+backgroundColor = "#F1F0EC"
+
+[client]
+toolbarMode = "minimal"

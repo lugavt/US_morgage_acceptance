@@ -1,0 +1,4 @@
+model,approval rate,lowest DIR (pair),pairs below 4/5ths,largest EOD (pair),pairs equivalent (±0.02),lowest DIR (all groups)
+xgboost,0.4732,0.702 (derived_race),1/3,0.094,0/3,0.375
+logreg,0.2048,0.550 (derived_race),2/3,0.095,0/3,0.16
+tabpfn,0.395,0.685 (derived_race),1/3,0.091,0/3,0.323

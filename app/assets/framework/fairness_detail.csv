@@ -1,0 +1,16 @@
+model,attribute,comparison,approval gap (P − R),90% CI,TOST p,equivalent (±0.02),DIR (pair),DIR (all groups),EOD (pair),EOD (all groups),p independence,p separation,p sufficiency,p cond. parity (DTI),p cond. parity (LTV)
+xgboost,derived_race,Black or African American vs White,-0.1433,"[-0.1457, -0.1408]",1.0000,no,0.702,0.375,0.094,0.228,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+xgboost,derived_ethnicity,Hispanic or Latino vs Not Hispanic or Latino,-0.0584,"[-0.0606, -0.0562]",1.0000,no,0.878,0.532,0.028,0.145,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+xgboost,derived_sex,Female vs Male,-0.0382,"[-0.0401, -0.0363]",1.0000,no,0.909,0.644,0.031,0.185,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+xgboost,applicant_age,—,—,—,—,—,—,0.517,—,0.29,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+xgboost,co_applicant_age,—,—,—,—,—,—,0.644,—,0.234,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+logreg,derived_race,Black or African American vs White,-0.0964,"[-0.0981, -0.0948]",1.0000,no,0.55,0.16,0.095,0.305,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+logreg,derived_ethnicity,Hispanic or Latino vs Not Hispanic or Latino,-0.0626,"[-0.0642, -0.0610]",1.0000,no,0.705,0.469,0.066,0.174,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+logreg,derived_sex,Female vs Male,-0.0304,"[-0.0317, -0.0291]",1.0000,no,0.801,0.396,0.031,0.197,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+logreg,applicant_age,—,—,—,—,—,—,0.351,—,0.208,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+logreg,co_applicant_age,—,—,—,—,—,—,0.414,—,0.264,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+tabpfn,derived_race,Black or African American vs White,-0.1266,"[-0.1289, -0.1243]",1.0000,no,0.685,0.323,0.091,0.253,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+tabpfn,derived_ethnicity,Hispanic or Latino vs Not Hispanic or Latino,-0.0483,"[-0.0504, -0.0462]",1.0000,no,0.88,0.37,0.024,0.278,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+tabpfn,derived_sex,Female vs Male,-0.0366,"[-0.0384, -0.0348]",1.0000,no,0.895,0.623,0.032,0.172,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+tabpfn,applicant_age,—,—,—,—,—,—,0.381,—,0.37,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4
+tabpfn,co_applicant_age,—,—,—,—,—,—,0.494,—,0.342,<1e-4,<1e-4,<1e-4,<1e-4,<1e-4

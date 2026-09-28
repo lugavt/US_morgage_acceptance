@@ -1,0 +1,4 @@
+model,AUC,top SHAP feature,top XPER feature,surrogate fidelity (R²)
+xgboost,0.9087,debt_to_income_ratio,debt_to_income_ratio,0.546
+logreg,0.7652,loan_purpose,loan_purpose,0.842
+tabpfn,0.8744,debt_to_income_ratio,debt_to_income_ratio,0.647
